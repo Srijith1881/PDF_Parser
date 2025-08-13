@@ -1,0 +1,55 @@
+# -------------------------
+# Python cache & build files
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# -------------------------
+# Virtual environments
+# -------------------------
+.venv/
+venv/
+ENV/
+env/
+.venv*/
+.conda/
+
+# -------------------------
+# IDE / Editor settings
+# -------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -------------------------
+# OS / misc
+# -------------------------
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# Project-specific outputs
+# -------------------------
+# Generated JSONL outputs
+usb_pd_toc.jsonl
+usb_pd_spec.jsonl
+usb_pd_metadata.jsonl
+
+# Validation report
+validation_report.xlsx
+
+# Sample / test PDFs
+*.pdf
+
+# Debug logs
+*.log
+debug_pdf.py
