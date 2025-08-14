@@ -85,33 +85,35 @@ def generate_excel_report(validation_results: Dict, output_path: str) -> None:
         summary = validation_results.get('summary', {})
         pd.DataFrame([summary]).to_excel(writer, sheet_name='Summary', index=False)
 
-        # Missing / Extra
-        pd.DataFrame(validation_results.get('missing_sections', []), columns=['missing_section_id']) \
-            .to_excel(writer, sheet_name='MissingSections', index=False)
+        # Missing/Extra
+        pd.DataFrame(validation_results.get('missing_sections', []), columns=['missing_section_id']).to_excel(
+            writer, sheet_name='MissingSections', index=False
+        )
+        pd.DataFrame(validation_results.get('extra_sections', []), columns=['extra_section_id']).to_excel(
+            writer, sheet_name='ExtraSections', index=False
+        )
 
-        pd.DataFrame(validation_results.get('extra_sections', []), columns=['extra_section_id']) \
-            .to_excel(writer, sheet_name='ExtraSections', index=False)
-
-        # Schema failures
+        # Failures
         def failures_to_df(fails):
             rows = []
             for f in fails:
                 item = f.get('item')
                 err = f.get('error')
                 rows.append({
-                    "item_id": item.get('section_id') if item else None,
+                    "item_id": (item or {}).get('section_id') if item else None,
                     "error": err,
                     "item_preview": str(item)[:400]
                 })
             return pd.DataFrame(rows)
 
-        failures_to_df(validation_results.get('toc_schema_failures', [])) \
-            .to_excel(writer, sheet_name='ToC_Schema_Failures', index=False)
-
-        failures_to_df(validation_results.get('section_schema_failures', [])) \
-            .to_excel(writer, sheet_name='Section_Schema_Failures', index=False)
-
-        failures_to_df(validation_results.get('metadata_schema_failures', [])) \
-            .to_excel(writer, sheet_name='Metadata_Schema_Failures', index=False)
+        failures_to_df(validation_results.get('toc_schema_failures', [])).to_excel(
+            writer, sheet_name='ToC_Schema_Failures', index=False
+        )
+        failures_to_df(validation_results.get('section_schema_failures', [])).to_excel(
+            writer, sheet_name='Section_Schema_Failures', index=False
+        )
+        failures_to_df(validation_results.get('metadata_schema_failures', [])).to_excel(
+            writer, sheet_name='Metadata_Schema_Failures', index=False
+        )
 
     logger.info("Validation report saved to %s", output_path)

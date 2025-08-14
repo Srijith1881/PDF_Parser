@@ -1,53 +1,36 @@
 # main.py
-import argparse
-from extract_toc import extract_toc_from_pdf
-from extract_sections import extract_sections_from_pdf, extract_metadata_from_sections
-from utils import write_jsonl
-from config import Config
-from validate import validate_toc_vs_sections, generate_excel_report
-import logging
-import os
-import sys
+import argparse, os, sys, logging
+from pipeline import run_pipeline
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def main():
-    # Hardcoded PDF path
-    # pdf_path = "./USB_PD_Specification.pdf"
-    pdf_path = "./USB_PD.pdf"
-    doc_title = "USB Power Delivery Specification"
-    toc_pages = None  # Or set a fixed number like 10
-    out_dir = "."
+    parser = argparse.ArgumentParser(description="USB-PD PDF parser (CLI)")
+    parser.add_argument("--pdf", required=True, help="Path to USB PD PDF")
+    parser.add_argument("--doc_title", default="USB Power Delivery Specification")
+    parser.add_argument("--out_dir", default=None, help="Output directory (if omitted, auto job folder)")
+    parser.add_argument("--toc_pages", type=int, default=None)
+    parser.add_argument("--toc_start", type=int, default=None)
+    parser.add_argument("--toc_end", type=int, default=None)
+    parser.add_argument("--use_llm", action="store_true")
+    args = parser.parse_args()
 
-    if not os.path.exists(pdf_path):
-        logger.error("PDF not found: %s", pdf_path)
+    if not os.path.exists(args.pdf):
+        logger.error("PDF not found: %s", args.pdf)
         sys.exit(2)
 
-    cfg = Config()
-    logger.info("Extracting ToC from first %s pages...", toc_pages or cfg.toc_default_pages)
-    toc = extract_toc_from_pdf(pdf_path, doc_title, toc_pages=toc_pages)
+    result = run_pipeline(
+        pdf_path=args.pdf,
+        doc_title=args.doc_title,
+        out_dir=args.out_dir,
+        toc_pages=args.toc_pages,
+        toc_start=args.toc_start,
+        toc_end=args.toc_end,
+        use_llm=args.use_llm
+    )
 
-    toc_out = os.path.join(out_dir, cfg.toc_jsonl)
-    write_jsonl(toc, toc_out)
-
-    logger.info("Extracting sections based on ToC page ranges...")
-    sections = extract_sections_from_pdf(pdf_path, toc, doc_title)
-    sections_out = os.path.join(out_dir, cfg.sections_jsonl)
-    write_jsonl(sections, sections_out)
-
-    logger.info("Extracting metadata (tables/figures) heuristically...")
-    metadata = extract_metadata_from_sections(sections, doc_title)
-    metadata_out = os.path.join(out_dir, cfg.metadata_jsonl)
-    write_jsonl(metadata, metadata_out)
-
-    logger.info("Validating ToC vs Sections...")
-    validation_results = validate_toc_vs_sections(toc, sections, metadata)
-    report_out = os.path.join(out_dir, cfg.validation_report)
-    generate_excel_report(validation_results, report_out)
-
-    logger.info("All done. Outputs written to: %s", os.path.abspath(out_dir))
-    logger.info("Files: %s, %s, %s, %s", toc_out, sections_out, metadata_out, report_out)
+    logger.info("Job %s complete. Outputs in %s", result["job_id"], result["out_dir"])
 
 if __name__ == "__main__":
     main()
