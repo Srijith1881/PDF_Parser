@@ -95,15 +95,15 @@ Get up and running in minutes! 🚀
    Access the API at `http://localhost:8000`.
 
 ### Frontend Setup (Optional)
-1. Clone the frontend repository (see [Frontend Repo](#frontend-repo)).
+1. Frontend is attached with this repo.
 2. Install dependencies:
    ```bash
-   cd usb-pd-frontend
+   cd frontend
    npm install
    ```
 3. Start the React app:
    ```bash
-   npm start
+   npm run dev
    ```
    Access the dashboard at `http://localhost:3000`.
 
@@ -184,8 +184,7 @@ To verify the system's functionality:
    - Open `validation_report.xlsx` in Excel to confirm section counts, missing entries, and metadata matches.
 
 ## Frontend Repo
-The React frontend is hosted in a separate repository for modularity. Check it out here:  
-🔗 [USB PD Parser Frontend](https://github.com/yourusername/usb-pd-frontend) (Placeholder link)
+The React frontend is attached in the same repository for convenience and accessibility.
 
 ## Thank You
 Thank you for exploring the USB PD Specification Parser! 🎉 We built this tool to make complex technical documents more accessible and actionable. Whether you're an engineer diving into USB PD protocols or a technical writer streamlining documentation, we hope this system saves you time and effort. Feel free to contribute, raise issues, or reach out with feedback on GitHub. Happy parsing! 😊
