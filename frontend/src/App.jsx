@@ -1,7 +1,4 @@
 import React, { useState } from "react";
-import UploadForm from "./components/UploadForm";
-import KPICards from "./components/KPICards";
-import FileDownloads from "./components/FileDownloads";
 import "./index.css";
 
 function App() {
@@ -9,7 +6,10 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleUpload = async (formData) => {
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+
     setLoading(true);
     setError("");
     setJobData(null);
@@ -20,9 +20,7 @@ function App() {
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error(`Error: ${res.status} ${res.statusText}`);
-      }
+      if (!res.ok) throw new Error(`Error: ${res.status} ${res.statusText}`);
 
       const data = await res.json();
       setJobData(data);
@@ -36,15 +34,34 @@ function App() {
   return (
     <div className="container">
       <h1>USB PD Specification Parser</h1>
-      <UploadForm onUpload={handleUpload} loading={loading} />
-      {error && <p className="error">{error}</p>}
+      <form onSubmit={handleUpload}>
+        <input type="file" name="file" accept="application/pdf" required />
+        <input type="number" name="toc_start" placeholder="ToC Start Page" />
+        <input type="number" name="toc_end" placeholder="ToC End Page" />
+        <button type="submit" disabled={loading}>
+          {loading ? "Processing..." : "Upload & Parse"}
+        </button>
+      </form>
 
-      {loading && <p>Processing... please wait</p>}
+      {error && <p className="error">{error}</p>}
 
       {jobData && (
         <>
-          <KPICards counts={jobData.counts} />
-          <FileDownloads jobId={jobData.job_id} files={jobData.files} />
+          <h2>📊 Results</h2>
+          <ul>
+            <li>📑 ToC Entries: {jobData.counts.toc}</li>
+            <li>📄 Sections: {jobData.counts.sections}</li>
+            <li>📊 Metadata: {jobData.counts.metadata}</li>
+            <li>✅ Validations: {jobData.counts.validation}</li>
+          </ul>
+
+          <h3>📂 Downloads</h3>
+          <ul>
+            <li><a href={`http://localhost:8000${jobData.files.toc_jsonl}`} download>Download ToC JSONL</a></li>
+            <li><a href={`http://localhost:8000${jobData.files.sections_jsonl}`} download>Download Sections JSONL</a></li>
+            <li><a href={`http://localhost:8000${jobData.files.metadata_jsonl}`} download>Download Metadata JSONL</a></li>
+            <li><a href={`http://localhost:8000${jobData.files.validation_xlsx}`} download>Download Validation Report</a></li>
+          </ul>
         </>
       )}
     </div>

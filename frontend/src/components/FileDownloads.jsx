@@ -1,29 +1,27 @@
 import React from "react";
 
 function FileDownloads({ jobId, files }) {
-  const backendBase = "http://localhost:8000";
-
-  const downloadables = [
-    { name: "ToC JSONL", file: "usb_pd_toc.jsonl" },
-    { name: "Sections JSONL", file: "usb_pd_spec.jsonl" },
-    { name: "Metadata JSONL", file: "usb_pd_metadata.jsonl" },
-    { name: "Validation Report (Excel)", file: "validation_report.xlsx" },
-  ];
+  if (!files) return null;
 
   return (
     <div className="downloads">
-      <h2>Download Outputs</h2>
-      {downloadables.map((d) => (
-        <a
-          key={d.file}
-          href={`${backendBase}/download/${jobId}/${d.file}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="download-btn"
-        >
-          {d.name}
-        </a>
-      ))}
+      <h2>📂 Download Files</h2>
+      <ul>
+        {Object.entries(files).map(([key, path]) => {
+          const filename = path.split("/").pop();
+          return (
+            <li key={key}>
+              <a
+                href={`http://localhost:8000/download/${jobId}/${filename}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                ⬇️ {filename}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

@@ -1,19 +1,23 @@
 # server.py
 import os
 import shutil
+import uuid
+import logging
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from pipeline import run_pipeline
+from usb_pd_parser.pipeline import run_pipeline
 
-app = FastAPI(title="USB PD Parser API", version="1.0.0")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("server")
 
-# CORS for your React app (adjust origins as you like)
+app = FastAPI(title="USB PD Parser API", version="2.0")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten in prod
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,71 +30,59 @@ class ParseResponse(BaseModel):
     files: dict
     out_dir: str
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
 @app.post("/parse", response_model=ParseResponse)
 async def parse_pdf(
     file: UploadFile = File(...),
     doc_title: str = Form("USB Power Delivery Specification"),
     toc_start: Optional[int] = Form(None),
     toc_end: Optional[int] = Form(None),
-    toc_pages: Optional[int] = Form(None),
-    use_llm: bool = Form(False)
 ):
-    # Save upload to a temp path
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Please upload a PDF file.")
 
     os.makedirs("uploads", exist_ok=True)
-    upload_path = os.path.join("uploads", file.filename)
+    upload_path = os.path.join("uploads", f"{uuid.uuid4()}.pdf")
     with open(upload_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # Each job gets its own output dir
     os.makedirs("outputs", exist_ok=True)
-    # Pass None for out_dir -> pipeline will create a new job folder
+    job_id = str(uuid.uuid4())
+    out_dir = os.path.join("outputs", job_id)
+
     try:
         result = run_pipeline(
             pdf_path=upload_path,
             doc_title=doc_title,
-            out_dir=None,
-            toc_pages=toc_pages,
+            out_dir=out_dir,
             toc_start=toc_start,
             toc_end=toc_end,
-            use_llm=use_llm
         )
     except Exception as e:
+        logger.exception("Pipeline failed")
         raise HTTPException(status_code=500, detail=f"Pipeline failed: {e}")
 
-    # Return summary
-    return ParseResponse(
-        job_id=result["job_id"],
-        doc_title=result["doc_title"],
-        counts=result["counts"],
-        files=result["files"],
-        out_dir=result["out_dir"]
-    )
-
-@app.get("/jobs/{job_id}")
-def job_status(job_id: str):
-    job_dir = os.path.join("outputs", job_id)
-    if not os.path.isdir(job_dir):
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    # Basic stats by reading files
-    files = {
-        "toc_jsonl": os.path.join(job_dir, "usb_pd_toc.jsonl"),
-        "sections_jsonl": os.path.join(job_dir, "usb_pd_spec.jsonl"),
-        "metadata_jsonl": os.path.join(job_dir, "usb_pd_metadata.jsonl"),
-        "validation_xlsx": os.path.join(job_dir, "validation_report.xlsx"),
+    # Count entries
+    counts = {
+        "toc": sum(1 for _ in open(result["toc"], "r", encoding="utf-8")),
+        "sections": sum(1 for _ in open(result["sections"], "r", encoding="utf-8")),
+        "metadata": sum(1 for _ in open(result["metadata"], "r", encoding="utf-8")),
+        "validation": 1 if os.path.isfile(result["report"]) else 0,
     }
-    return JSONResponse({
-        "job_id": job_id,
-        "out_dir": os.path.abspath(job_dir),
-        "files": {k: os.path.abspath(v) for k, v in files.items()},
-    })
+
+    files = {
+        "toc_jsonl": f"/download/{job_id}/{os.path.basename(result['toc'])}",
+        "sections_jsonl": f"/download/{job_id}/{os.path.basename(result['sections'])}",
+        "metadata_jsonl": f"/download/{job_id}/{os.path.basename(result['metadata'])}",
+        "validation_xlsx": f"/download/{job_id}/{os.path.basename(result['report'])}",
+    }
+
+    return ParseResponse(
+        job_id=job_id,
+        doc_title=doc_title,
+        counts=counts,
+        files=files,
+        out_dir=out_dir,
+    )
 
 @app.get("/download/{job_id}/{filename}")
 def download_file(job_id: str, filename: str):
